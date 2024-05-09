@@ -33,6 +33,7 @@ export class UrlService {
     `/price-compare${appendSearchParams({ cpu, memory, storage, memoryUnit, storageUnit })}`;
   static contact = () => "/contact";
   static faq = (q?: FaqAnchorType) => `/faq${q ? "#" + q : ""}`;
+  static marketplace = () => "/marketplace";
   static privacyPolicy = () => "/privacy-policy";
   static termsOfService = () => "/terms-of-service";
 

@@ -119,9 +119,10 @@ export const Sidebar: React.FunctionComponent<Props> = ({ isMobileOpen, handleDr
           url: UrlService.sdlBuilder(),
           activeRoutes: [UrlService.sdlBuilder()]
         },
+        { title: "Marketplace", icon: props => <HelpIcon {...props} />, url: UrlService.marketplace(), activeRoutes: [UrlService.marketplace()] },
         { title: "Providers", icon: props => <DnsIcon {...props} />, url: UrlService.providers(), activeRoutes: [UrlService.providers()] },
 
-        { title: "FAQ", icon: props => <HelpIcon {...props} />, url: UrlService.faq(), activeRoutes: [UrlService.faq()] },
+        // { title: "FAQ", icon: props => <HelpIcon {...props} />, url: UrlService.faq(), activeRoutes: [UrlService.faq()] },
         { title: "Settings", icon: props => <SettingsIcon {...props} />, url: UrlService.settings(), activeRoutes: [UrlService.settings()] }
       ]
     },
