@@ -26,6 +26,8 @@ import { Provider } from "jotai";
 import { usePreviousRoute } from "@src/hooks/usePreviousRoute";
 import { PageHead } from "@src/components/layout/PageHead";
 import { CustomChainProvider } from "@src/context/CustomChainProvider";
+import { RainbowWalletProvider } from "@src/context/RainbowWalletProvider";
+import "@rainbow-me/rainbowkit/styles.css";
 
 import "@interchain-ui/react/styles";
 import { ChainParamProvider } from "@src/context/ChainParamProvider";
@@ -79,6 +81,7 @@ const App: React.FunctionComponent<Props> = ({ Component, pageProps, emotionCach
                         <CustomChainProvider>
                           <ChainParamProvider>
                             <WalletProvider>
+                              <RainbowWalletProvider>
                               <CertificateProvider>
                                 <TemplatesProvider>
                                   <LocalNoteProvider>
@@ -89,6 +92,7 @@ const App: React.FunctionComponent<Props> = ({ Component, pageProps, emotionCach
                                   </LocalNoteProvider>
                                 </TemplatesProvider>
                               </CertificateProvider>
+                              </RainbowWalletProvider>
                             </WalletProvider>
                           </ChainParamProvider>
                         </CustomChainProvider>

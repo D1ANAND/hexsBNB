@@ -15,6 +15,7 @@ import { useRouter } from "next/router";
 import { AccountMenu } from "./AccountMenu";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 type Props = {
   isMobileOpen: boolean;
@@ -102,6 +103,9 @@ export const Header: React.FunctionComponent<Props> = ({ children, isMobileOpen,
           </Box>
 
           <Box sx={{ maxHeight: `${accountBarHeight}px`, alignItems: "center", display: { xs: "none", sm: "none", md: "flex" } }}>
+            <div>
+              <ConnectButton />
+            </div>
             <div>
               <Link passHref href={UrlService.getStarted()}>
                 <StyledBadge overlap="circular" anchorOrigin={{ vertical: "top", horizontal: "right" }} variant="dot">

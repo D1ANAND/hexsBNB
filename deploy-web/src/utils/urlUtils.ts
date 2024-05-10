@@ -34,6 +34,7 @@ export class UrlService {
   static contact = () => "/contact";
   static faq = (q?: FaqAnchorType) => `/faq${q ? "#" + q : ""}`;
   static marketplace = () => "/marketplace";
+  static myModels = () => "/my-models";
   static privacyPolicy = () => "/privacy-policy";
   static termsOfService = () => "/terms-of-service";
 

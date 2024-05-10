@@ -18,6 +18,7 @@ const webSocketStats: ClientWebSocketStats[] = [];
 const whitelist = [
   "http://localhost:3001",
   "http://localhost:3000",
+  "http://localhost:3002",
   "https://deploybeta.cloudmos.io",
   "https://deploy.cloudmos.io",
   "https://cloudmos.grafana.net"
