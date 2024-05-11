@@ -86,6 +86,7 @@
     "tss-react": "^4.8.5",
     "use-state-with-callback": "^3.0.2",
     "usehooks-ts": "^2.9.1",
+    "web3modal": "^1.9.12",
     "xterm": "^5.3.0",
     "xterm-addon-fit": "^0.7.0"
   },

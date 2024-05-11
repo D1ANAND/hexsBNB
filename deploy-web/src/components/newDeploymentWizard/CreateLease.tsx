@@ -44,6 +44,7 @@ import { CustomNextSeo } from "../shared/CustomNextSeo";
 import { RouteStepKeys } from "@src/utils/constants";
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import { useProviderList } from "@src/queries/useProvidersQuery";
+import { tokenizeModel } from "../../utils/evmContractInteraction";
 
 const yaml = require("js-yaml");
 
@@ -192,8 +193,10 @@ export const CreateLease: React.FunctionComponent<Props> = ({ dseq }) => {
 
     // Create the lease
     try {
+      
       const messages = bidKeys.map(gseq => selectedBids[gseq]).map(bid => TransactionMessageData.getCreateLeaseMsg(bid));
 
+      //-- Create Lease Call
       const response = await signAndBroadcastTx([...messages]);
 
       if (!response) throw new Error("Rejected transaction");
@@ -223,9 +226,15 @@ export const CreateLease: React.FunctionComponent<Props> = ({ dseq }) => {
         const yamlJson = yaml.load(localDeploymentData.manifest);
         const mani = deploymentData.getManifest(yamlJson, true);
 
+        //-- Tokenize the model Call
+        const res = await tokenizeModel(yamlJson);
+
+        if (!res) throw new Error("Failed transaction");
+
         for (let i = 0; i < bidKeys.length; i++) {
           const currentBid = selectedBids[bidKeys[i]];
           const provider = providers.find(x => x.owner === currentBid.provider);
+          //-- Send the manifest Call
           await sendManifest(provider, mani);
         }
       } catch (err) {
