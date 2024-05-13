@@ -1,5 +1,5 @@
-export const addressHexs =`0x419EDD596181732E08DF4b14C5891607909EDDAd`
-export const currencyTicker =`SEP`
+export const addressHexs =`0x992727458B4ae6Cf40Bba66EEE42EeF24236D3FC`
+export const currencyTicker =`tBNB`
 
 export const abiHexs =`
 [

@@ -104,7 +104,7 @@ export const Header: React.FunctionComponent<Props> = ({ children, isMobileOpen,
 
           <Box sx={{ maxHeight: `${accountBarHeight}px`, alignItems: "center", display: { xs: "none", sm: "none", md: "flex" } }}>
             <div>
-              <ConnectButton />
+              <ConnectButton showBalance={false}/>
             </div>
             <div>
               <Link passHref href={UrlService.getStarted()}>
