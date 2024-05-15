@@ -5,7 +5,7 @@ import { NextSeo } from "next-seo";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { fetchMyModelsPage, downloadSDL, changeVisibilityCall } from "../../utils/evmContractInteraction";
+import { fetchDiscoveryPage, forkModelCall, addReviewCall } from "../../utils/evmContractInteraction";
 
 export default function MarketPlacePage() {
   const [allModels, setAllModels] = useState([]);
@@ -17,7 +17,7 @@ export default function MarketPlacePage() {
 
   async function getModels() {
     setLoading(true);
-    const data = await fetchMyModelsPage();
+    const data = await fetchDiscoveryPage();
     console.log("models page: ", data);
     setAllModels(data);
     setLoading(false);
@@ -42,7 +42,7 @@ export default function MarketPlacePage() {
   const buttonsContainer = {
     display: "flex",
     gap: "10px"
-  }
+  };
 
   const CardButton = {
     backgroundColor: "#DF5737",
@@ -69,7 +69,7 @@ export default function MarketPlacePage() {
           <p>Creator: {props.creator}</p>
           <p>NFT Contract: {props.NFTContract}</p>
           {/* <p>Owner: {props.owner}</p> */}
-          {/* <p>Model ID: {props.modelId}</p> */}
+          <p>Model ID: {props.modelId}</p>
           {/* <p>Reviews URI: {props.reviewsURI}</p> */}
           {/* <p>Encrypted SDL URI: {props.encryptedSDLURI}</p> */}
           {/* <p>Visibility: {props.visibility}</p> */}
@@ -77,8 +77,6 @@ export default function MarketPlacePage() {
           {/* <p>Base Model: {props.baseModel}</p> */}
           {/* <p>Last Sold Price: {props.lastSoldPrice}</p> */}
           {/* <p>On Sale: {props.onSale}</p> */}
-          <p>Dao Members: {props.daoMembers}</p>
-
           {props.baseModel == 0 ? (
             <div>
               <p>Base Model</p>
@@ -87,18 +85,14 @@ export default function MarketPlacePage() {
             <div>Forked from model {props.forkedFrom}</div>
           )}
           <div style={buttonsContainer}>
-            <button onClick={() => downloadSDL(props.modelId)} style={CardButton}>
-              Deploy
-            </button>
-            <button onClick={() => changeVisibilityCall(props.modelId, props.visibility)} style={CardButton}>
-              {props.visibility == "true" ? <>Private</> : <>Public</>}
-            </button>
-            <button onClick={() => downloadSDL(props.modelId)} style={CardButton}>
-              Sell
-            </button>
-            <button onClick={() => downloadSDL(props.modelId)} style={CardButton}>
-              Add
-            </button>
+          <button onClick={() => addReviewCall(props.modelId)} style={CardButton}>
+                Add Review
+              </button>
+            {props.visibility == true ?? (
+              <button onClick={() => forkModelCall(props.modelId)} style={CardButton}>
+                Fork
+              </button>
+            )}
           </div>
         </div>
         <div>
@@ -112,10 +106,10 @@ export default function MarketPlacePage() {
 
   return (
     <Layout>
-      <NextSeo title={`Inventory Models`} />
+      <NextSeo title={`Discovery`} />
 
       <PageContainer>
-        <Title value="Inventory Models" />
+        <Title value="Discover Models" />
         <div style={cardContainerStyle}>
           {allModels.map((nft, i) => {
             return (
@@ -135,7 +129,6 @@ export default function MarketPlacePage() {
                 NFTContract={nft?.NFTContract}
                 lastSoldPrice={nft?.lastSoldPrice}
                 onSale={nft?.onSale}
-                daoMembers={1}
               />
             );
           })}

@@ -26,6 +26,7 @@ import MenuOpenIcon from "@mui/icons-material/MenuOpen";
 import MenuIcon from "@mui/icons-material/Menu";
 import ConstructionIcon from "@mui/icons-material/Construction";
 import HelpIcon from "@mui/icons-material/Help";
+import RocketLaunch from "@mui/icons-material/RocketLaunch";
 import { useAtom } from "jotai";
 import sdlStore from "@src/store/sdlStore";
 import { MobileSidebarUser } from "./MobileSidebarUser";
@@ -119,10 +120,12 @@ export const Sidebar: React.FunctionComponent<Props> = ({ isMobileOpen, handleDr
           url: UrlService.sdlBuilder(),
           activeRoutes: [UrlService.sdlBuilder()]
         },
-        { title: "Marketplace", icon: props => <HelpIcon {...props} />, url: UrlService.marketplace(), activeRoutes: [UrlService.marketplace()] },
-        { title: "My-Models", icon: props => <HelpIcon {...props} />, url: UrlService.myModels(), activeRoutes: [UrlService.myModels()] },
-        { title: "Providers", icon: props => <DnsIcon {...props} />, url: UrlService.providers(), activeRoutes: [UrlService.providers()] },
 
+        { title: "Discovery", icon: props => <RocketLaunch {...props} />, url: UrlService.discovery(), activeRoutes: [UrlService.discovery()] },
+        { title: "Marketplace", icon: props => <RocketLaunch {...props} />, url: UrlService.marketplace(), activeRoutes: [UrlService.marketplace()] },
+        { title: "My-Models", icon: props => <RocketLaunch {...props} />, url: UrlService.myModels(), activeRoutes: [UrlService.myModels()] },
+        
+        // { title: "Providers", icon: props => <DnsIcon {...props} />, url: UrlService.providers(), activeRoutes: [UrlService.providers()] }
         // { title: "FAQ", icon: props => <HelpIcon {...props} />, url: UrlService.faq(), activeRoutes: [UrlService.faq()] },
         // { title: "Settings", icon: props => <SettingsIcon {...props} />, url: UrlService.settings(), activeRoutes: [UrlService.settings()] }
       ]
@@ -391,3 +394,4 @@ export const Sidebar: React.FunctionComponent<Props> = ({ isMobileOpen, handleDr
     </Box>
   );
 };
+
