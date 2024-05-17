@@ -5,7 +5,8 @@ import { NextSeo } from "next-seo";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { fetchDiscoveryPage, forkModelCall, addReviewCall } from "../../utils/evmContractInteraction";
+import { fetchDiscoveryPage, forkModelCall } from "../../utils/evmContractInteraction";
+import { ReviewModal } from "./ReviewModal";
 
 export default function MarketPlacePage() {
   const [allModels, setAllModels] = useState([]);
@@ -18,7 +19,7 @@ export default function MarketPlacePage() {
   async function getModels() {
     setLoading(true);
     const data = await fetchDiscoveryPage();
-    console.log("models page: ", data);
+    console.log("discovery models page: ", data);
     setAllModels(data);
     setLoading(false);
   }
@@ -54,6 +55,8 @@ export default function MarketPlacePage() {
   };
 
   function Cards(props) {
+    const [isReviewModalOpen, setReviewModalOpen] = useState(false);
+
     return (
       <div style={cardStyle}>
         <div>
@@ -85,15 +88,18 @@ export default function MarketPlacePage() {
             <div>Forked from model {props.forkedFrom}</div>
           )}
           <div style={buttonsContainer}>
-          <button onClick={() => addReviewCall(props.modelId)} style={CardButton}>
-                Add Review
-              </button>
-            {props.visibility == true ?? (
+            <button onClick={() => setReviewModalOpen(true)} style={CardButton}>
+              Add Review
+            </button>
+            {props.visibility == "true" ? (
               <button onClick={() => forkModelCall(props.modelId)} style={CardButton}>
                 Fork
               </button>
+            ) : (
+              <div></div>
             )}
           </div>
+          <ReviewModal modelId={props.modelId} isOpen={isReviewModalOpen} onClose={() => setReviewModalOpen(false)} />
         </div>
         <div>
           {/* <Link href={`/marketplace/${props.modelId}`}>

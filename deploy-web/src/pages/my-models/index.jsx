@@ -6,6 +6,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { fetchMyModelsPage, downloadSDL, changeVisibilityCall } from "../../utils/evmContractInteraction";
+import {SellModal} from "./SellModal";
+import {DAOModal} from "./DAOModal";
 
 export default function MarketPlacePage() {
   const [allModels, setAllModels] = useState([]);
@@ -18,7 +20,7 @@ export default function MarketPlacePage() {
   async function getModels() {
     setLoading(true);
     const data = await fetchMyModelsPage();
-    console.log("models page: ", data);
+    console.log("inventory models page: ", data);
     setAllModels(data);
     setLoading(false);
   }
@@ -54,6 +56,10 @@ export default function MarketPlacePage() {
   };
 
   function Cards(props) {
+
+    const [isSellModalOpen, setSellModalOpen] = useState(false);
+    const [isDAOModalOpen, setDAOModalOpen] = useState(false);
+
     return (
       <div style={cardStyle}>
         <div>
@@ -93,12 +99,14 @@ export default function MarketPlacePage() {
             <button onClick={() => changeVisibilityCall(props.modelId, props.visibility)} style={CardButton}>
               {props.visibility == "true" ? <>Private</> : <>Public</>}
             </button>
-            <button onClick={() => downloadSDL(props.modelId)} style={CardButton}>
+            <button onClick={() => setSellModalOpen(true)} style={CardButton}>
               Sell
             </button>
-            <button onClick={() => downloadSDL(props.modelId)} style={CardButton}>
+            <button onClick={() => setDAOModalOpen(true)} style={CardButton}>
               Add
             </button>
+            <SellModal modelId={props.modelId} isOpen={isSellModalOpen} onClose={() => setSellModalOpen(false)} />
+            <DAOModal modelId={props.modelId} isOpen={isDAOModalOpen} onClose={() => setDAOModalOpen(false)} />
           </div>
         </div>
         <div>

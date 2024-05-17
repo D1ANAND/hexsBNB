@@ -4,6 +4,7 @@ import { ethers } from "ethers";
 import { addressHexs, abiHexs } from "./constants/constants";
 import lighthouse from "@lighthouse-web3/sdk";
 import axios from "axios";
+import kavach from "@lighthouse-web3/kavach";
 
 //stats page - control visibility variable, see number of forks, dao management
 
@@ -36,16 +37,18 @@ export async function tokenizeModel(_yamlJson: any) {
 
   //download the SDL file
   const fileName = await generateUniqueFileName();
-  console.log("default name", _yamlJson.name);
-  _yamlJson.name = fileName;
   download(_yamlJson, fileName);
 
+  //fetch model id
+  let _nextModelId = await getNextModelId();
+
   //encrypt the SDL file
-  await encryptSDLUsingLighthouse(_yamlJson, fileName);
+  let _uri = await encryptSDLUsingLighthouse(_yamlJson, _nextModelId);
 
   //tokenize the file
   let _visibility = true;
-  let _uri = "eagle";
+  // let _uri = "eagle";
+
   const contract = await getHexsContract(true);
   const tx = await contract.createModel(_visibility, _uri);
   await tx.wait();
@@ -58,19 +61,24 @@ export async function putModelOnSaleCall(_modelId: any, _price: any) {
   const weiPrice = ethers.utils.parseUnits(_price.toString(), "ether");
   const tx = await contract.putModelOnSale(_modelId, weiPrice);
   await tx.wait();
+  fetchAllModels();
   console.log("Model put on sale");
 }
 
-export async function buyModelCall(_modelId: any) {
+export async function buyModelCall(_modelId: any, _price: any) {
   const contract = await getHexsContract(true);
+  const weiPrice = ethers.utils.parseUnits(_price.toString(), "ether");
   // send money af
-  const tx = await contract.buyModel(_modelId);
+  const tx = await contract.buyModel(_modelId, {
+    value: weiPrice,
+    gasLimit: 1000000
+  });
   await tx.wait();
   console.log("Model bought");
 }
 
 export async function forkModelCall(_modelId: any) {
-  let _visibility = true
+  let _visibility = true;
   const contract = await getHexsContract(true);
   const tx = await contract.forkModel(_modelId, _visibility);
   await tx.wait();
@@ -94,8 +102,7 @@ export async function addMemberToDaoCall(_modelId: any, _newMember: any) {
 let _visibility: boolean = false;
 
 export async function changeVisibilityCall(_modelId: any, _currentVisibility: any) {
-
-  console.log("before", _currentVisibility, _visibility)
+  console.log("before", _currentVisibility, _visibility);
   if (_currentVisibility === "false") {
     _visibility = true;
   }
@@ -105,12 +112,18 @@ export async function changeVisibilityCall(_modelId: any, _currentVisibility: an
   const tx = await contract.changeVisibility(_modelId, _visibility);
   await tx.wait();
   console.log("Visibility changed");
-  await fetchMyModelsPage()
+  await fetchMyModelsPage();
 }
 
-export async function addReviewCall() {}
+export async function addReviewCall(_modelId: any, _review: any) {}
 
 // ------- getter
+
+async function getNextModelId() {
+  const contract = await getHexsContract(false);
+  const modelId = await contract.modelId();
+  return modelId.toNumber() + 1;
+}
 
 async function getNFTContractAddress(_modelId: any) {
   const contract = await getHexsContract(false);
@@ -157,11 +170,11 @@ async function fetchAllModels() {
 
 export async function fetchMarketplacePage() {
   if (allModels.length > 0) {
-    const filteredArray = allModels.filter((subarray: any) => subarray.onSale == true);
+    const filteredArray = allModels.filter((subarray: any) => subarray.onSale == "true");
     return filteredArray;
   } else {
     const data = await fetchAllModels();
-    const filteredArray = data.filter(subarray => subarray.onSale == true);
+    const filteredArray = data.filter(subarray => subarray.onSale == "true");
     return filteredArray;
   }
 }
@@ -178,19 +191,21 @@ export async function fetchMarketplacePage() {
 // }
 
 export async function fetchDiscoveryPage() {
-  const data = await fetchAllModels()
-  return data
+  const data = await fetchAllModels();
+  return data;
 }
 
 export async function fetchMyModelsPage() {
-  //   const userAddress = await getUserAddress();
-  const userAddress = "0x48e6a467852Fa29710AaaCDB275F85db4Fa420eB";
+  const userAddress = await getUserAddress();
+  let stringWithQuotes = '"' + userAddress.toString() + '"';
+  console.log("user address", stringWithQuotes);
+  // const userAddress = "0x48e6a467852Fa29710AaaCDB275F85db4Fa420eB";
   if (allModels.length > 0) {
-    const filteredArray = allModels.filter((subarray: any) => subarray.owner === userAddress);
+    const filteredArray = allModels.filter((subarray: any) => subarray.owner.toLowerCase() == stringWithQuotes.toLowerCase());
     return filteredArray;
   } else {
     const data = await fetchAllModels();
-    const filteredArray = data.filter(subarray => subarray.owner == userAddress);
+    const filteredArray = data.filter(subarray => subarray.owner == stringWithQuotes);
     return filteredArray;
   }
 }
@@ -203,56 +218,59 @@ export async function fetchAllDaoMembers(_modelId: any) {
 
 // ------- lighthouse functions
 
-// const lighthouseKey = process.env.NEXT_PUBLIC_LIGHTHOUSE_KEY;
-const lighthouseKey = "f4fe69b9.b425d2fd61e84cb38a104149081a406a";
+const lighthouseKey = process.env.NEXT_PUBLIC_LIGHTHOUSE_KEY;
+// const lighthouseKey = "f4fe69b9.b425d2fd61e84cb38a104149081a406a";
 
-// async function newEncryptSDLUsingLighthouse(_yamlJson: any) {
-//   const yourText = "_yamlJson";
-//   const apiKey = "beb93df5.78de7074ed1f4e6691485078798ee59c";
-//   const publicKey = await getUserAddress();
-//   const signedMessage = "SIGNATURE/JWT";
-//   const name = "SDL file";
-//   const response = await lighthouse.textUploadEncrypted(yourText, apiKey, publicKey, signedMessage, name);
-//   console.log("lighthouse", response);
-// }
+async function encryptSDLUsingLighthouse(_yamlJson: any, _nextModelId: any) {
+  try {
+    const encryptionAuth = await signAuthMessage();
+    if (!encryptionAuth) {
+      console.error("Failed to sign the message.");
+      return;
+    }
 
-async function encryptSDLUsingLighthouse(_yamlJson: any, _fileName: any) {
-  console.log("lighthouse started");
+    const { signature, signerAddress } = encryptionAuth;
 
-  const e = new File([_yamlJson], _fileName, { type: "application/json", endings: "native" });
+    const output = await lighthouse.textUploadEncrypted(_yamlJson, lighthouseKey, signerAddress, signature);
+    console.log("Upload Successful", output);
+    alert(`Upload JSON Success : ${output}`);
 
-  const sig = await encryptionSignature();
-  const response = await lighthouse.uploadEncrypted(e, lighthouseKey, sig.publicKey, sig.signedMessage, progressCallback);
-  console.log("lighthouse response:", response);
-
-  //   applyAccessConditions(response.data.Hash, _modelId);
-  //   console.log("cid", response.data.Hash);
+    // applyAccessConditions(output.data.Hash, _nextModelId);
+    console.log("cid", output.data.Hash);
+    return output.data.Hash;
+  } catch (error) {
+    console.error("Error uploading encrypted file:", error);
+  }
 }
 
-const encryptionSignature = async () => {
-  const provider = new ethers.providers.Web3Provider(window.ethereum);
-  const signer = provider.getSigner();
-  const address = await signer.getAddress();
-  const messageRequested = (await lighthouse.getAuthMessage(address)).data.message;
-  const signedMessage = await signer.signMessage(messageRequested);
-  return {
-    signedMessage: signedMessage,
-    publicKey: address
-  };
+const signAuthMessage = async () => {
+  if ((window as any).ethereum) {
+    try {
+      const accounts = await window?.ethereum?.request({
+        method: "eth_requestAccounts"
+      });
+      if (accounts.length === 0) {
+        throw new Error("No accounts returned from Wallet.");
+      }
+      const signerAddress = accounts[0];
+      const { message } = (await lighthouse.getAuthMessage(signerAddress)).data;
+      const signature = await window.ethereum.request({
+        method: "personal_sign",
+        params: [message, signerAddress]
+      });
+      return { signature, signerAddress };
+    } catch (error) {
+      console.error("Error signing message with Wallet", error);
+      return null;
+    }
+  } else {
+    console.log("Please install Wallet!");
+    return null;
+  }
 };
 
-interface ProgressData {
-  total: number;
-  uploaded: number;
-}
-
-const progressCallback = (progressData: ProgressData) => {
-  let percentageDone = 100 - (progressData.total / progressData.uploaded) * 100;
-  console.log(percentageDone.toFixed(2));
-};
-
-const applyAccessConditions = async (cid: any, _modelId: any) => {
-  let nftContractAddress = await getNFTContractAddress(_modelId);
+const applyAccessConditions = async (cid: any, _nextModelId: any) => {
+  let nftContractAddress = await getNFTContractAddress(_nextModelId);
 
   const conditions = [
     {
@@ -274,7 +292,75 @@ const applyAccessConditions = async (cid: any, _modelId: any) => {
   console.log(response);
 };
 
+const encryptionSignature = async () => {
+  const provider = new ethers.providers.Web3Provider(window.ethereum);
+  const signer = provider.getSigner();
+  const address = await signer.getAddress();
+  const messageRequested = (await lighthouse.getAuthMessage(address)).data.message;
+  const signedMessage = await signer.signMessage(messageRequested);
+  return {
+    signedMessage: signedMessage,
+    publicKey: address
+  };
+};
+
 async function decryptSDLUsingLighthouse() {}
+
+// ------ dead code lighthouse
+
+// const signAuthMessage = async () => {
+//   const provider = new ethers.providers.Web3Provider(window.ethereum);
+//   const signer = provider.getSigner();
+//   const address = await signer.getAddress();
+//   const authMessage = await kavach.getAuthMessage(address);
+//   const signedMessage = await signer.signMessage(authMessage.message);
+//   const { JWT, error } = await kavach.getJWT(address, signedMessage);
+//   return JWT;
+// };
+
+// async function encryptSDLUsingLighthouse(_yamlJson: any, _fileName: any) {
+//   console.log("lighthouse started");
+
+//   const provider = new ethers.providers.Web3Provider(window.ethereum);
+//   const signer = provider.getSigner();
+//   const address = await signer.getAddress();
+
+//   const jwt = await signAuthMessage();
+//   const yourText = "_yamlJson";
+
+//   const response = await lighthouse.textUploadEncrypted(yourText, lighthouseKey, address, jwt, _fileName);
+//   console.log("lighthouse", response);
+
+//   //   applyAccessConditions(response.data.Hash, _modelId);
+//   //   console.log("cid", response.data.Hash);
+// }
+
+// const sig = await encryptionSignature();
+
+// const e = new File([_yamlJson], _fileName, { type: "application/json", endings: "native" });
+// const dataTransfer = new DataTransfer();
+// dataTransfer.items.add(e);
+// console.log("filelist", dataTransfer.files)
+
+// const response = await lighthouse.uploadEncrypted(dataTransfer.files[0], lighthouseKey, address, jwt, progressCallback);
+// console.log("lighthouse response:", response);
+
+// const publicKey = await getUserAddress();
+// const apiKey = "beb93df5.78de7074ed1f4e6691485078798ee59c";
+// const signedMessage = "SIGNATURE/JWT";
+// const name = "SDL file";
+
+// interface ProgressData {
+//   total: number;
+//   uploaded: number;
+// }
+
+// const progressCallback = (progressData: ProgressData) => {
+//   let percentageDone = 100 - (progressData.total / progressData.uploaded) * 100;
+//   console.log(percentageDone.toFixed(2));
+// };
+
+// ------ dead code lighthouse
 
 // ------- extra functions
 
@@ -304,3 +390,4 @@ function download(_yamlJson: any, _fileName: any) {
 }
 
 export async function downloadSDL(_modelId: any) {}
+

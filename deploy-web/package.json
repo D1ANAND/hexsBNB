@@ -31,6 +31,7 @@
     "@emotion/styled": "^11.8.1",
     "@leapwallet/elements": "0.12.1",
     "@leapwallet/name-matcha": "^1.7.1",
+    "@lighthouse-web3/kavach": "^0.1.6",
     "@lighthouse-web3/sdk": "^0.3.2",
     "@monaco-editor/react": "^4.4.6",
     "@mui/icons-material": "^5.11.11",

@@ -5,7 +5,7 @@ import { NextSeo } from "next-seo";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { fetchMyModelsPage, buyModelCall } from "../../utils/evmContractInteraction";
+import { fetchMyModelsPage, fetchMarketplacePage, buyModelCall } from "../../utils/evmContractInteraction";
 import { currencyTicker } from "../../utils/constants/constants";
 
 export default function MarketPlacePage() {
@@ -18,8 +18,8 @@ export default function MarketPlacePage() {
 
   async function getModels() {
     setLoading(true);
-    const data = await fetchMyModelsPage();
-    console.log("models page: ", data);
+    const data = await fetchMarketplacePage();
+    console.log("marketplace models page: ", data);
     setAllModels(data);
     setLoading(false);
   }
@@ -86,7 +86,7 @@ export default function MarketPlacePage() {
             <div>Forked from model {props.forkedFrom}</div>
           )}
           <div style={buttonsContainer}>
-            <button onClick={() => buyModelCall(props.modelId)} style={CardButton}>
+            <button onClick={() => buyModelCall(props.modelId, props.lastSoldPrice)} style={CardButton}>
               Buy
             </button>
             
