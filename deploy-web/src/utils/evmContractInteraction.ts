@@ -39,19 +39,23 @@ export async function tokenizeModel(_yamlJson: any) {
   const fileName = await generateUniqueFileName();
   download(_yamlJson, fileName);
 
-  //fetch model id
-  let _nextModelId = await getNextModelId();
-
-  //encrypt the SDL file
-  let _uri = await encryptSDLUsingLighthouse(_yamlJson, _nextModelId);
-
-  //tokenize the file
   let _visibility = true;
-  // let _uri = "eagle";
 
+  //create contract instance for deployment
   const contract = await getHexsContract(true);
-  const tx = await contract.createModel(_visibility, _uri);
+  const tx = await contract.createModel(_visibility, "");
   await tx.wait();
+
+  //fetch the new model id
+  let _newModelId = await getNewModelId();
+
+  //encrypt the SDL file with NFT contract address
+  let _uri = await encryptSDLUsingLighthouse(_yamlJson, _newModelId);
+
+  //update the Model's URI
+  const tx2 = await contract.updateSDLURI(_newModelId, _uri);
+  await tx2.wait();
+
   console.log("Model Tokenized");
   return true;
 }
@@ -115,14 +119,19 @@ export async function changeVisibilityCall(_modelId: any, _currentVisibility: an
   await fetchMyModelsPage();
 }
 
-export async function addReviewCall(_modelId: any, _review: any) {}
+export async function addReviewCall(_modelId: any, _review: any) {
+  const contract = await getHexsContract(true);
+  const tx = await contract.addReviews(_modelId, _review);
+  await tx.wait();
+  console.log("Review added");
+}
 
 // ------- getter
 
-async function getNextModelId() {
+async function getNewModelId() {
   const contract = await getHexsContract(false);
   const modelId = await contract.modelId();
-  return modelId.toNumber() + 1;
+  return modelId.toNumber();
 }
 
 async function getNFTContractAddress(_modelId: any) {
@@ -196,18 +205,39 @@ export async function fetchDiscoveryPage() {
 }
 
 export async function fetchMyModelsPage() {
-  const userAddress = await getUserAddress();
-  let stringWithQuotes = '"' + userAddress.toString() + '"';
-  console.log("user address", stringWithQuotes);
-  // const userAddress = "0x48e6a467852Fa29710AaaCDB275F85db4Fa420eB";
-  if (allModels.length > 0) {
-    const filteredArray = allModels.filter((subarray: any) => subarray.owner.toLowerCase() == stringWithQuotes.toLowerCase());
-    return filteredArray;
-  } else {
-    const data = await fetchAllModels();
-    const filteredArray = data.filter(subarray => subarray.owner == stringWithQuotes);
-    return filteredArray;
-  }
+  const currentUser = await getUserAddress();
+
+  const contract = await getHexsContract(true);
+  const data = await contract.fetchInventory(currentUser.toString());
+
+  // console.log("data", data)
+  const items = await Promise.all(
+    data.map(async (i: any) => {
+      //   const tokenUri = await contract.uri(i.ticketId.toString());
+      // console.log(tokenUri);
+      //   const meta = await axios.get(tokenUri);
+      let price = ethers.utils.formatEther(i.lastSoldPrice);
+      let item = {
+        creator: i.creator.toString(),
+        owner: i.owner.toString(),
+        modelId: i.modelId.toNumber(),
+        reviewsURI: i.reviewsURI,
+        encryptedSDLURI: i.encryptedSDLURI,
+        visibility: i.visibility.toString(),
+        isForked: i.isForked.toString(),
+        baseModel: i.baseModel.toNumber(),
+        forkedFrom: i.forkedFrom.toNumber(),
+        NFTContract: i.NFTContract.toString(),
+        lastSoldPrice: price,
+        onSale: i.onSale.toString()
+      };
+      return item;
+    })
+  );
+
+  allModels = items;
+  console.log("All Models fetched: ", items);
+  return items;
 }
 
 export async function fetchAllDaoMembers(_modelId: any) {
@@ -216,12 +246,18 @@ export async function fetchAllDaoMembers(_modelId: any) {
   return data;
 }
 
+export async function getModelEncryptedSDLURI(_modelId: any) {
+  const contract = await getHexsContract(false);
+  const modelStruct = await contract.idToModel(_modelId);
+  alert(`Encrypted Hash : ${modelStruct.encryptedSDLURI}`);
+}
+
 // ------- lighthouse functions
 
 const lighthouseKey = process.env.NEXT_PUBLIC_LIGHTHOUSE_KEY;
 // const lighthouseKey = "f4fe69b9.b425d2fd61e84cb38a104149081a406a";
 
-async function encryptSDLUsingLighthouse(_yamlJson: any, _nextModelId: any) {
+async function encryptSDLUsingLighthouse(_yamlJson: any, _newModelId: any) {
   try {
     const encryptionAuth = await signAuthMessage();
     if (!encryptionAuth) {
@@ -233,9 +269,9 @@ async function encryptSDLUsingLighthouse(_yamlJson: any, _nextModelId: any) {
 
     const output = await lighthouse.textUploadEncrypted(_yamlJson, lighthouseKey, signerAddress, signature);
     console.log("Upload Successful", output);
-    alert(`Upload JSON Success : ${output}`);
+    alert(`Upload JSON Success : ${output.data.Hash}`);
 
-    // applyAccessConditions(output.data.Hash, _nextModelId);
+    applyAccessConditions(output.data.Hash, _newModelId);
     console.log("cid", output.data.Hash);
     return output.data.Hash;
   } catch (error) {
@@ -269,8 +305,8 @@ const signAuthMessage = async () => {
   }
 };
 
-const applyAccessConditions = async (cid: any, _nextModelId: any) => {
-  let nftContractAddress = await getNFTContractAddress(_nextModelId);
+const applyAccessConditions = async (cid: any, _newModelId: any) => {
+  let nftContractAddress = await getNFTContractAddress(_newModelId);
 
   const conditions = [
     {

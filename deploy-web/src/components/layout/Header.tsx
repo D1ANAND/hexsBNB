@@ -77,7 +77,7 @@ export const Header: React.FunctionComponent<Props> = ({ children, isMobileOpen,
         <ErrorBoundary FallbackComponent={ErrorFallback}>
           <Box sx={{ display: "flex", alignItems: "center" }}>
             <Box href={UrlService.home()} component={Link} sx={{ height: "35px", width: "140px" }}>
-              <Image
+              {/* <Image
                 alt="Cloudmos Logo"
                 src={theme.palette.mode === "dark" ? "/images/cloudmos-logo.png" : "/images/cloudmos-logo-light.png"}
                 layout="responsive"
@@ -86,7 +86,7 @@ export const Header: React.FunctionComponent<Props> = ({ children, isMobileOpen,
                 height={35}
                 loading="eager"
                 priority
-              />
+              /> */}
             </Box>
           </Box>
 

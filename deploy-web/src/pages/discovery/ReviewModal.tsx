@@ -46,7 +46,7 @@ export const ReviewModal = ({modelId, isOpen, onClose}) => {
               control={control}
               name="price"
               render={({ field }) => {
-                return <TextField {...field} autoFocus type="text" variant="outlined" label="User Address" onChange={e => field.onChange(e.target.value)}/>;
+                return <TextField {...field} autoFocus type="text" variant="outlined" label="Review" onChange={e => field.onChange(e.target.value)}/>;
               }}
             />
           </FormControl>

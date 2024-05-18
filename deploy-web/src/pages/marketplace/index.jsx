@@ -83,7 +83,7 @@ export default function MarketPlacePage() {
               <p>Base Model</p>
             </div>
           ) : (
-            <div>Forked from model {props.forkedFrom}</div>
+            <div><p>Forked from model {props.forkedFrom}</p></div>
           )}
           <div style={buttonsContainer}>
             <button onClick={() => buyModelCall(props.modelId, props.lastSoldPrice)} style={CardButton}>

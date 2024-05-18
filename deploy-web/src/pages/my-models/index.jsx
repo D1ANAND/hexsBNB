@@ -5,7 +5,7 @@ import { NextSeo } from "next-seo";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { fetchMyModelsPage, downloadSDL, changeVisibilityCall } from "../../utils/evmContractInteraction";
+import { fetchMyModelsPage, downloadSDL, changeVisibilityCall, getModelEncryptedSDLURI } from "../../utils/evmContractInteraction";
 import {SellModal} from "./SellModal";
 import {DAOModal} from "./DAOModal";
 
@@ -90,7 +90,7 @@ export default function MarketPlacePage() {
               <p>Base Model</p>
             </div>
           ) : (
-            <div>Forked from model {props.forkedFrom}</div>
+            <div><p>Forked from model {props.forkedFrom}</p></div>
           )}
           <div style={buttonsContainer}>
             <button onClick={() => downloadSDL(props.modelId)} style={CardButton}>
@@ -104,6 +104,9 @@ export default function MarketPlacePage() {
             </button>
             <button onClick={() => setDAOModalOpen(true)} style={CardButton}>
               Add
+            </button>
+            <button onClick={() => getModelEncryptedSDLURI(props.modelId)} style={CardButton}>
+              Hash
             </button>
             <SellModal modelId={props.modelId} isOpen={isSellModalOpen} onClose={() => setSellModalOpen(false)} />
             <DAOModal modelId={props.modelId} isOpen={isDAOModalOpen} onClose={() => setDAOModalOpen(false)} />
