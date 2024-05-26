@@ -113,7 +113,7 @@ export const Sidebar: React.FunctionComponent<Props> = ({ isMobileOpen, handleDr
           url: UrlService.deploymentList(),
           activeRoutes: [UrlService.deploymentList(), "/deployments", "/new-deployment"]
         },
-        { title: "Templates", icon: props => <CollectionsIcon {...props} />, url: UrlService.templates(), activeRoutes: [UrlService.templates()] },
+        // { title: "Templates", icon: props => <CollectionsIcon {...props} />, url: UrlService.templates(), activeRoutes: [UrlService.templates()] },
         {
           title: "SDL Builder",
           icon: props => <ConstructionIcon {...props} />,
@@ -125,7 +125,7 @@ export const Sidebar: React.FunctionComponent<Props> = ({ isMobileOpen, handleDr
         { title: "Marketplace", icon: props => <RocketLaunch {...props} />, url: UrlService.marketplace(), activeRoutes: [UrlService.marketplace()] },
         { title: "My-Models", icon: props => <RocketLaunch {...props} />, url: UrlService.myModels(), activeRoutes: [UrlService.myModels()] },
         
-        // { title: "Providers", icon: props => <DnsIcon {...props} />, url: UrlService.providers(), activeRoutes: [UrlService.providers()] }
+        { title: "Providers", icon: props => <DnsIcon {...props} />, url: UrlService.providers(), activeRoutes: [UrlService.providers()] }
         // { title: "FAQ", icon: props => <HelpIcon {...props} />, url: UrlService.faq(), activeRoutes: [UrlService.faq()] },
         // { title: "Settings", icon: props => <SettingsIcon {...props} />, url: UrlService.settings(), activeRoutes: [UrlService.settings()] }
       ]

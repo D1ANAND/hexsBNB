@@ -137,7 +137,8 @@ async function getNewModelId() {
 async function getNFTContractAddress(_modelId: any) {
   const contract = await getHexsContract(false);
   const modelStruct = await contract.idToModel(_modelId);
-  return modelStruct.nftContractAddress;
+  // console.log("modelll", modelStruct)
+  return modelStruct.NFTContract;
 }
 
 let allModels: any = [];
@@ -271,7 +272,7 @@ async function encryptSDLUsingLighthouse(_yamlJson: any, _newModelId: any) {
     console.log("Upload Successful", output);
     alert(`Upload JSON Success : ${output.data.Hash}`);
 
-    applyAccessConditions(output.data.Hash, _newModelId);
+    await applyAccessConditions(output.data.Hash, _newModelId);
     console.log("cid", output.data.Hash);
     return output.data.Hash;
   } catch (error) {
@@ -308,6 +309,8 @@ const signAuthMessage = async () => {
 const applyAccessConditions = async (cid: any, _newModelId: any) => {
   let nftContractAddress = await getNFTContractAddress(_newModelId);
 
+  console.log("nftContractAddress", nftContractAddress)
+
   const conditions = [
     {
       id: 97,
@@ -325,7 +328,7 @@ const applyAccessConditions = async (cid: any, _newModelId: any) => {
 
   const response = await lighthouse.applyAccessCondition(publicKey, cid, signedMessage, conditions, aggregator);
 
-  console.log(response);
+  console.log("access condition res:",  response);
 };
 
 const encryptionSignature = async () => {

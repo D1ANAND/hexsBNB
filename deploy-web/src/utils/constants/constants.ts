@@ -1,8 +1,11 @@
+export const addressTBNB = `0x9488e8282518a472d27cDaE73b92A0A1B48825B0`
 const currencyTBNB = `tBNB`
+
+export const addressSepolia = `0xD456C76CA3AfAB183dF78d09EaC372730F743746`
 const currencySepolia = `SEP`
 
-export const addressHexs =`0x7C1cE60aDB00Ef67269B2F54332b150AEb4d3921`
-export const currencyTicker = currencySepolia
+export const addressHexs = addressTBNB
+export const currencyTicker = currencyTBNB
 
 export const abiHexs =`
 [
