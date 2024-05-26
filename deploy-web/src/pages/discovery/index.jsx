@@ -2,15 +2,16 @@ import Layout from "@src/components/layout/Layout";
 import PageContainer from "@src/components/shared/PageContainer";
 import { Title } from "@src/components/shared/Title";
 import { NextSeo } from "next-seo";
-import Image from "next/image";
-import Link from "next/link";
 import { useState, useEffect } from "react";
 import { fetchDiscoveryPage, forkModelCall } from "../../utils/evmContractInteraction";
 import { ReviewModal } from "./ReviewModal";
+import { useRouter } from "next/router";
 
 export default function MarketPlacePage() {
   const [allModels, setAllModels] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const router = useRouter();
 
   useEffect(() => {
     getModels();
@@ -54,8 +55,22 @@ export default function MarketPlacePage() {
     cursor: "pointer"
   };
 
+  const ViewButton = {
+    backgroundColor: "#DF5737",
+    color: "#fff",
+    padding: "10px 20px",
+    border: "none",
+    borderRadius: "3px",
+    cursor: "pointer",
+    minWidth: "35%"
+  };
+
   function Cards(props) {
     const [isReviewModalOpen, setReviewModalOpen] = useState(false);
+
+    function pushPage() {
+      router.push(`/models/${props.modelId}`);
+    }
 
     return (
       <div style={cardStyle}>
@@ -71,8 +86,8 @@ export default function MarketPlacePage() {
           )}
           <p>Creator: {props.creator}</p>
           <p>NFT Contract: {props.NFTContract}</p>
-          {/* <p>Owner: {props.owner}</p> */}
           <p>Model ID: {props.modelId}</p>
+          {/* <p>Owner: {props.owner}</p> */}
           {/* <p>Reviews URI: {props.reviewsURI}</p> */}
           {/* <p>Encrypted SDL URI: {props.encryptedSDLURI}</p> */}
           {/* <p>Visibility: {props.visibility}</p> */}
@@ -85,7 +100,9 @@ export default function MarketPlacePage() {
               <p>Base Model</p>
             </div>
           ) : (
-            <div><p>Forked from model {props.forkedFrom}</p></div>
+            <div>
+              <p>Forked from model {props.forkedFrom}</p>
+            </div>
           )}
           <div style={buttonsContainer}>
             <button onClick={() => setReviewModalOpen(true)} style={CardButton}>
@@ -98,6 +115,9 @@ export default function MarketPlacePage() {
             ) : (
               <div></div>
             )}
+            <button onClick={pushPage} style={CardButton}>
+              View
+            </button>
           </div>
           <ReviewModal modelId={props.modelId} isOpen={isReviewModalOpen} onClose={() => setReviewModalOpen(false)} />
         </div>

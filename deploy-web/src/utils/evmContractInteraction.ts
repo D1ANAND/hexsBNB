@@ -1,12 +1,10 @@
 "use client";
 import web3modal from "web3modal";
 import { ethers } from "ethers";
-import { addressHexs, abiHexs } from "./constants/constants";
+import { addressHexs, abiHexs, abiSDLNFT } from "./constants/constants";
 import lighthouse from "@lighthouse-web3/sdk";
 import axios from "axios";
 import kavach from "@lighthouse-web3/kavach";
-
-//stats page - control visibility variable, see number of forks, dao management
 
 // ------- instances
 
@@ -23,6 +21,20 @@ export async function getHexsContract(providerOrSigner: any) {
   return contract;
 }
 
+export async function getSDLNFTContract(providerOrSigner: any, _modelId: any) {
+  const nftContractAddress = await getNFTContractAddress(_modelId);
+  const modal = new web3modal();
+  const connection = await modal.connect();
+  const provider = new ethers.providers.Web3Provider(connection);
+  const contract = new ethers.Contract(nftContractAddress, abiSDLNFT, provider);
+  if (providerOrSigner == true) {
+    const signer = provider.getSigner();
+    const contract = new ethers.Contract(nftContractAddress, abiSDLNFT, signer);
+    return contract;
+  }
+  return contract;
+}
+
 export async function getUserAddress() {
   const accounts = await window.ethereum.request({
     method: "eth_requestAccounts"
@@ -33,7 +45,7 @@ export async function getUserAddress() {
 // ------- setter
 
 export async function tokenizeModel(_yamlJson: any) {
-  //   console.log(_yamlJson);
+  // console.log(_yamlJson);
 
   //download the SDL file
   const fileName = await generateUniqueFileName();
@@ -49,6 +61,9 @@ export async function tokenizeModel(_yamlJson: any) {
   //fetch the new model id
   let _newModelId = await getNewModelId();
 
+  //initiate engagement count for this variable
+  await initiateEngagementCount(_newModelId)
+  
   //encrypt the SDL file with NFT contract address
   let _uri = await encryptSDLUsingLighthouse(_yamlJson, _newModelId);
 
@@ -126,20 +141,14 @@ export async function addReviewCall(_modelId: any, _review: any) {
   console.log("Review added");
 }
 
+export async function setRoyaltyRate(_modelId: any, _royaltyRate: any) {
+  const contract = await getHexsContract(true);
+  const tx = await contract.setRoyaltyRate(_modelId, _royaltyRate);
+  await tx.wait();
+  console.log("Royalty rate updated");
+}
+
 // ------- getter
-
-async function getNewModelId() {
-  const contract = await getHexsContract(false);
-  const modelId = await contract.modelId();
-  return modelId.toNumber();
-}
-
-async function getNFTContractAddress(_modelId: any) {
-  const contract = await getHexsContract(false);
-  const modelStruct = await contract.idToModel(_modelId);
-  // console.log("modelll", modelStruct)
-  return modelStruct.NFTContract;
-}
 
 let allModels: any = [];
 fetchAllModels();
@@ -148,16 +157,15 @@ async function fetchAllModels() {
   const contract = await getHexsContract(true);
   const data = await contract.fetchAllModels();
 
-  // console.log("data", data)
   const items = await Promise.all(
     data.map(async (i: any) => {
       //   const tokenUri = await contract.uri(i.ticketId.toString());
-      // console.log(tokenUri);
+      //   console.log(tokenUri);
       //   const meta = await axios.get(tokenUri);
       let price = ethers.utils.formatEther(i.lastSoldPrice);
       let item = {
         creator: i.creator.toString(),
-        owner: i.owner.toString(),
+        owner: i.priviledgedOwner.toString(),
         modelId: i.modelId.toNumber(),
         reviewsURI: i.reviewsURI,
         encryptedSDLURI: i.encryptedSDLURI,
@@ -189,17 +197,6 @@ export async function fetchMarketplacePage() {
   }
 }
 
-// export async function fetchDiscoveryPage() {
-//   if (allModels.length > 0) {
-//     const filteredArray = allModels.filter((subarray: any) => subarray.visibility == "true");
-//     return filteredArray;
-//   } else {
-//     const data = await fetchAllModels();
-//     const filteredArray = data.filter(subarray => subarray.visibility == "true");
-//     return filteredArray;
-//   }
-// }
-
 export async function fetchDiscoveryPage() {
   const data = await fetchAllModels();
   return data;
@@ -211,16 +208,15 @@ export async function fetchMyModelsPage() {
   const contract = await getHexsContract(true);
   const data = await contract.fetchInventory(currentUser.toString());
 
-  // console.log("data", data)
   const items = await Promise.all(
     data.map(async (i: any) => {
       //   const tokenUri = await contract.uri(i.ticketId.toString());
-      // console.log(tokenUri);
+      //   console.log(tokenUri);
       //   const meta = await axios.get(tokenUri);
       let price = ethers.utils.formatEther(i.lastSoldPrice);
       let item = {
         creator: i.creator.toString(),
-        owner: i.owner.toString(),
+        owner: i.priviledgedOwner.toString(),
         modelId: i.modelId.toNumber(),
         reviewsURI: i.reviewsURI,
         encryptedSDLURI: i.encryptedSDLURI,
@@ -241,10 +237,22 @@ export async function fetchMyModelsPage() {
   return items;
 }
 
+async function getNewModelId() {
+  const contract = await getHexsContract(false);
+  const modelId = await contract.modelId();
+  return modelId.toNumber();
+}
+
+async function getNFTContractAddress(_modelId: any) {
+  const contract = await getHexsContract(false);
+  const modelStruct = await contract.idToModel(_modelId);
+  return modelStruct.NFTContract;
+}
+
 export async function fetchAllDaoMembers(_modelId: any) {
   const contract = await getHexsContract(false);
-  const data = await contract.modelIdToMembers(_modelId);
-  return data;
+  const daoMembers = await contract.modelIdToMembers(_modelId);
+  return daoMembers;
 }
 
 export async function getModelEncryptedSDLURI(_modelId: any) {
@@ -253,10 +261,124 @@ export async function getModelEncryptedSDLURI(_modelId: any) {
   alert(`Encrypted Hash : ${modelStruct.encryptedSDLURI}`);
 }
 
+export async function getTotalModelOwners(_modelId: any) {
+  const nftContractInstance = await getSDLNFTContract(false, _modelId);
+  const owners = await nftContractInstance.tokenId();
+  return owners.toNumber();
+}
+
+export async function getAllReviews(_modelId: any) {
+  const contract = await getHexsContract(false);
+  console.log("_modelId received", _modelId);
+  const reviewsLength = await contract.fetchReviewsLength(_modelId);
+  let reviews: any = [];
+  for (let i = 0; i < reviewsLength.toNumber(); i++) {
+    let currentReview = await contract.modelToReviews(_modelId, i);
+    reviews.push(currentReview);
+  }
+  return reviews;
+}
+
+// ------- API functions
+
+async function initiateEngagementCount(_modelId: any) {
+  const apiUrl = "https://engagementscore-zvglklnxya-em.a.run.app/create";
+
+  try {
+    const payload = {
+      modelId: _modelId.toString(),
+      ContractAddress: addressHexs
+    };
+
+    console.log("payload initiateEngagementCount", payload);
+    const response = await axios.post(apiUrl, payload);
+    console.log(response);
+    return response;
+  } catch (error) {
+    console.error("consoling error", error);
+    return null;
+  }
+}
+
+export async function updateEngagementCount(_modelId: any) {
+  const apiUrl = "https://engagementscore-zvglklnxya-em.a.run.app/update";
+
+  try {
+    const payload = {
+      modelId: _modelId.toString()
+    };
+
+    console.log("payload updateEngagementCount", payload);
+    const response = await axios.post(apiUrl, payload);
+    console.log(response);
+    return response;
+  } catch (error) {
+    console.error("consoling error", error);
+    return null;
+  }
+}
+
+export async function fetchEngagementCount(_modelId: any) {
+  const apiUrl = `https://engagementscore-zvglklnxya-em.a.run.app/view/${_modelId}`;
+
+  try {
+    const payload = {
+      // modelId: _modelId.toString(),
+      // ContractAddress: addressHexs
+    };
+
+    console.log("payload fetchEngagementCount", payload);
+    const response = await axios.get(apiUrl);
+    console.log(response);
+    return response.data.EngagementScore;
+  } catch (error) {
+    console.error("consoling error", error);
+    return null;
+  }
+}
+
+async function updateForkCount(_modelId: any) {
+  const apiUrl = "https://engagementscore-zvglklnxya-em.a.run.app/updateForkCount";
+
+  try {
+    const payload = {
+      modelId: _modelId.toString(),
+      // ContractAddress: addressHexs
+    };
+
+    console.log("payload updateForkCount", payload);
+    const response = await axios.post(apiUrl, payload);
+    console.log(response);
+    return response;
+  } catch (error) {
+    console.error("consoling error", error);
+    return null;
+  }
+}
+
+export async function fetchForkCount(_modelId: any) {
+  const apiUrl = `https://engagementscore-zvglklnxya-em.a.run.app/fetchForkCount/${_modelId}`;
+
+  try {
+    const payload = {
+      // modelId: _modelId.toString(),
+      // ContractAddress: addressHexs
+    };
+
+    console.log("payload fetchForkCount", payload);
+    const response = await axios.post(apiUrl, payload);
+    console.log(response);
+    return response;
+  } catch (error) {
+    console.error("consoling error", error);
+    return null;
+  }
+}
+
+
 // ------- lighthouse functions
 
 const lighthouseKey = process.env.NEXT_PUBLIC_LIGHTHOUSE_KEY;
-// const lighthouseKey = "f4fe69b9.b425d2fd61e84cb38a104149081a406a";
 
 async function encryptSDLUsingLighthouse(_yamlJson: any, _newModelId: any) {
   try {
@@ -309,7 +431,7 @@ const signAuthMessage = async () => {
 const applyAccessConditions = async (cid: any, _newModelId: any) => {
   let nftContractAddress = await getNFTContractAddress(_newModelId);
 
-  console.log("nftContractAddress", nftContractAddress)
+  console.log("nftContractAddress", nftContractAddress);
 
   const conditions = [
     {
@@ -328,7 +450,7 @@ const applyAccessConditions = async (cid: any, _newModelId: any) => {
 
   const response = await lighthouse.applyAccessCondition(publicKey, cid, signedMessage, conditions, aggregator);
 
-  console.log("access condition res:",  response);
+  console.log("access condition res:", response);
 };
 
 const encryptionSignature = async () => {
@@ -344,6 +466,35 @@ const encryptionSignature = async () => {
 };
 
 async function decryptSDLUsingLighthouse() {}
+
+// ------- extra functions
+
+async function generateUniqueFileName() {
+  const contract = await getHexsContract(false);
+  const modelId = contract.modelId;
+  return addressHexs + (modelId + 1);
+}
+
+function createFileFromObject(_yamlJson: any, _fileName: any) {
+  const jsonString = JSON.stringify(_yamlJson);
+  const blob = new Blob([jsonString], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  return url;
+}
+
+function download(_yamlJson: any, _fileName: any) {
+  const url: any = createFileFromObject(_yamlJson, _fileName);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `SDL.json`;
+  document.body.appendChild(link);
+  link.click();
+
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+export async function downloadSDL(_modelId: any) {}
 
 // ------ dead code lighthouse
 
@@ -400,33 +551,3 @@ async function decryptSDLUsingLighthouse() {}
 // };
 
 // ------ dead code lighthouse
-
-// ------- extra functions
-
-async function generateUniqueFileName() {
-  const contract = await getHexsContract(false);
-  const modelId = contract.modelId;
-  return addressHexs + (modelId + 1);
-}
-
-function createFileFromObject(_yamlJson: any, _fileName: any) {
-  const jsonString = JSON.stringify(_yamlJson);
-  const blob = new Blob([jsonString], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  return url;
-}
-
-function download(_yamlJson: any, _fileName: any) {
-  const url: any = createFileFromObject(_yamlJson, _fileName);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `SDL.json`;
-  document.body.appendChild(link);
-  link.click();
-
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-}
-
-export async function downloadSDL(_modelId: any) {}
-

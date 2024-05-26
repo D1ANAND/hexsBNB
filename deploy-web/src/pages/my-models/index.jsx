@@ -2,16 +2,19 @@ import Layout from "@src/components/layout/Layout";
 import PageContainer from "@src/components/shared/PageContainer";
 import { Title } from "@src/components/shared/Title";
 import { NextSeo } from "next-seo";
-import Image from "next/image";
-import Link from "next/link";
 import { useState, useEffect } from "react";
 import { fetchMyModelsPage, downloadSDL, changeVisibilityCall, getModelEncryptedSDLURI } from "../../utils/evmContractInteraction";
-import {SellModal} from "./SellModal";
-import {DAOModal} from "./DAOModal";
+import { SellModal } from "./SellModal";
+import { DAOModal } from "./DAOModal";
+import { useRouter } from "next/router";
+import { UrlService } from "@src/utils/urlUtils";
+import { RouteStepKeys } from "@src/utils/constants";
 
 export default function MarketPlacePage() {
   const [allModels, setAllModels] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const router = useRouter();
 
   useEffect(() => {
     getModels();
@@ -44,7 +47,7 @@ export default function MarketPlacePage() {
   const buttonsContainer = {
     display: "flex",
     gap: "10px"
-  }
+  };
 
   const CardButton = {
     backgroundColor: "#DF5737",
@@ -55,10 +58,42 @@ export default function MarketPlacePage() {
     cursor: "pointer"
   };
 
-  function Cards(props) {
+  const ViewButton = {
+    backgroundColor: "#DF5737",
+    color: "#fff",
+    padding: "10px 20px",
+    border: "none",
+    borderRadius: "3px",
+    cursor: "pointer",
+    minWidth: "35%"
+  }
 
+  function Cards(props) {
     const [isSellModalOpen, setSellModalOpen] = useState(false);
     const [isDAOModalOpen, setDAOModalOpen] = useState(false);
+
+    const handleFileChange = event => {
+      const fileUploaded = event.target.files[0];
+      const reader = new FileReader();
+
+      reader.onload = event => {
+        // setSelectedTemplate({
+        //   title: "From file",
+        //   code: "from-file",
+        //   category: "General",
+        //   description: "Custom uploaded file",
+        //   content: event.target.result
+        // });
+        // setEditedManifest(event.target.result);
+        router.push(UrlService.newDeployment({ step: RouteStepKeys.editDeployment }));
+      };
+
+      reader.readAsText(fileUploaded);
+    };
+
+    function pushPage() {
+      router.push(`/my-models/${props.modelId}`);
+    }
 
     return (
       <div style={cardStyle}>
@@ -83,30 +118,37 @@ export default function MarketPlacePage() {
           {/* <p>Base Model: {props.baseModel}</p> */}
           {/* <p>Last Sold Price: {props.lastSoldPrice}</p> */}
           {/* <p>On Sale: {props.onSale}</p> */}
-          <p>Dao Members: {props.daoMembers}</p>
+          {/* <p>Owners: 1</p> */}
 
           {props.baseModel == 0 ? (
             <div>
               <p>Base Model</p>
             </div>
           ) : (
-            <div><p>Forked from model {props.forkedFrom}</p></div>
+            <div>
+              <p>Forked from model {props.forkedFrom}</p>
+            </div>
           )}
           <div style={buttonsContainer}>
-            <button onClick={() => downloadSDL(props.modelId)} style={CardButton}>
-              Deploy
-            </button>
             <button onClick={() => changeVisibilityCall(props.modelId, props.visibility)} style={CardButton}>
               {props.visibility == "true" ? <>Private</> : <>Public</>}
             </button>
+
             <button onClick={() => setSellModalOpen(true)} style={CardButton}>
               Sell
             </button>
+
             <button onClick={() => setDAOModalOpen(true)} style={CardButton}>
               Add
             </button>
-            <button onClick={() => getModelEncryptedSDLURI(props.modelId)} style={CardButton}>
-              Hash
+
+            <label htmlFor="filePicker" style={CardButton}>
+              Deploy
+            </label>
+            <input id="filePicker" style={{display:"none"}} type={"file"} onChange={handleFileChange}></input>
+
+            <button onClick={pushPage} style={ViewButton}>
+              View
             </button>
             <SellModal modelId={props.modelId} isOpen={isSellModalOpen} onClose={() => setSellModalOpen(false)} />
             <DAOModal modelId={props.modelId} isOpen={isDAOModalOpen} onClose={() => setDAOModalOpen(false)} />
@@ -146,7 +188,6 @@ export default function MarketPlacePage() {
                 NFTContract={nft?.NFTContract}
                 lastSoldPrice={nft?.lastSoldPrice}
                 onSale={nft?.onSale}
-                daoMembers={1}
               />
             );
           })}
