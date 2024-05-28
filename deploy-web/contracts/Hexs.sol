@@ -8,13 +8,16 @@ import "./SDLNFT.sol";
 //dao
 //reviews
 //fork
-//fetching all your models
-//royalty 3%
+//royalties
+//fetching models
+
+// priviledged owner - intial creator (or forker) of model who can alter royalty or sell on marketplace
+// default royalty rate is set to 3%
 
 contract Hexs {
     struct Model{
         address payable creator;
-        address payable owner;
+        address payable priviledgedOwner; // priviledged owner
         uint modelId;
         string reviewsURI;
         string encryptedSDLURI;
@@ -25,6 +28,7 @@ contract Hexs {
         address NFTContract;
         uint lastSoldPrice;
         bool onSale;
+        uint royaltyRate;
     }
 
     uint public modelId;
@@ -36,23 +40,34 @@ contract Hexs {
 
     modifier onlyModelOwner(uint _modelId) {
         Model memory model = idToModel[_modelId];
-        require(model.owner == msg.sender, "");
+        SDLNFT nft = SDLNFT(model.NFTContract);
+        require(nft.balanceOf(msg.sender) > 0, "");
+        _;
+    }
+
+    modifier onlyPriviledgedOwner(uint _modelId) {
+        Model memory model = idToModel[_modelId];
+        require(msg.sender == model.priviledgedOwner, "");
         _;
     }
 
     function createModel(bool _visibility, string memory _uri) public{
         ++modelId;
 
-        NFTMinter nftMinter = new NFTMinter();
+        SDLNFT nftMinter = new SDLNFT(msg.sender);
         nftMinter.setUri(_uri);
         uint nftTokenId = nftMinter.mintNFT(msg.sender);
         modelIdToMembers[modelId].push(msg.sender);
         userToModelToTokeId[msg.sender][modelId] = nftTokenId;
 
-        idToModel[modelId] = Model(payable(msg.sender), payable(msg.sender), modelId, "", _uri, _visibility, false, 0, 0, address(nftMinter), 0, false);
+        idToModel[modelId] = Model(payable(msg.sender), payable(msg.sender), modelId, "", _uri, _visibility, false, 0, 0, address(nftMinter), 0, false, 3);
     }
 
-    function putModelOnSale(uint _modelId, uint _price) public onlyModelOwner(_modelId) {
+    function setRoyaltyRate(uint _modelId, uint _royaltyRate) public onlyPriviledgedOwner(_modelId) {
+        idToModel[_modelId].royaltyRate = _royaltyRate;
+    }
+
+    function putModelOnSale(uint _modelId, uint _price) public onlyPriviledgedOwner(_modelId) {
         Model storage model = idToModel[_modelId];
         model.onSale = true;
         model.lastSoldPrice = _price;
@@ -64,16 +79,16 @@ contract Hexs {
         require(model.lastSoldPrice == msg.value, "");
         uint256 royalty = (model.lastSoldPrice * 3)/100; // 3% royalties
         uint256 remainingFunds = model.lastSoldPrice - royalty;
-        model.owner.transfer(remainingFunds);
         model.creator.transfer(royalty);
+        model.priviledgedOwner.transfer(remainingFunds);
         _transferSDLOwnership(_modelId);
     }
 
     function _transferSDLOwnership(uint _modelId) private {
         Model storage model = idToModel[_modelId];
-        model.owner = payable(msg.sender);
+        model.priviledgedOwner = payable(msg.sender);
 
-        NFTMinter nftMinter =  NFTMinter(model.NFTContract);
+        SDLNFT nftMinter =  SDLNFT(model.NFTContract);
         uint nftTokenId = userToModelToTokeId[tx.origin][_modelId];
         nftMinter.safeTransferFrom(msg.sender, address(this), nftTokenId);
     }
@@ -81,7 +96,7 @@ contract Hexs {
     function forkModel(uint _modelId, bool _visibility) public {
         Model memory model = idToModel[_modelId];
         ++modelId;
-        NFTMinter nftMinter = new NFTMinter();
+        SDLNFT nftMinter = new SDLNFT(msg.sender);
 
         nftMinter.setUri(model.encryptedSDLURI);
         uint nftTokenId = nftMinter.mintNFT(msg.sender);
@@ -89,23 +104,23 @@ contract Hexs {
         userToModelToTokeId[msg.sender][modelId] = nftTokenId;
 
         if (model.baseModel == 0) {
-            idToModel[modelId] = Model(payable(msg.sender), payable(msg.sender), modelId, model.reviewsURI, model.encryptedSDLURI, _visibility, true, _modelId, _modelId, address(nftMinter), 0, false);
+            idToModel[modelId] = Model(payable(msg.sender), payable(msg.sender), modelId, model.reviewsURI, model.encryptedSDLURI, _visibility, true, _modelId, _modelId, address(nftMinter), 0, false, 3);
         }
         else {   
-            idToModel[modelId] = Model(payable(msg.sender), payable(msg.sender), modelId, model.reviewsURI, model.encryptedSDLURI, _visibility, true, model.baseModel, _modelId, address(nftMinter), 0, false);
+            idToModel[modelId] = Model(payable(msg.sender), payable(msg.sender), modelId, model.reviewsURI, model.encryptedSDLURI, _visibility, true, model.baseModel, _modelId, address(nftMinter), 0, false, 3);
         }
     }
 
     function updateSDLURI(uint _modelId, string memory _uri) public onlyModelOwner(_modelId) {
         Model storage model = idToModel[modelId];
-        NFTMinter nftMinter = NFTMinter(model.NFTContract);
+        SDLNFT nftMinter = SDLNFT(model.NFTContract);
         nftMinter.setUri(model.encryptedSDLURI);
         model.encryptedSDLURI = _uri;
     }
 
     function addMemberToDao(uint _modelId, address _newMember) public onlyModelOwner(_modelId) {
         Model storage model = idToModel[_modelId];
-        NFTMinter nftMinter =  NFTMinter(model.NFTContract);
+        SDLNFT nftMinter =  SDLNFT(model.NFTContract);
         nftMinter.mintNFT(_newMember);
         modelIdToMembers[_modelId].push(msg.sender);
     }
@@ -136,14 +151,18 @@ contract Hexs {
         uint length;
 
         for (uint i = 1; i <= modelId; i++) {
-            if (idToModel[i].owner == _user) {
+            Model memory model = idToModel[i];
+            SDLNFT nft = SDLNFT(model.NFTContract);
+            if (nft.balanceOf(_user) > 0) {
                 length++;
             }
         }
 
         Model[] memory models = new Model[](length);
         for (uint i = 1; i <= modelId; i++) {
-            if (idToModel[i].owner == _user) {
+            Model memory model = idToModel[i];
+            SDLNFT nft = SDLNFT(model.NFTContract);
+            if (nft.balanceOf(_user) > 0) {
                 uint currentId = i;
                 Model storage currentItem = idToModel[currentId];
                 models[counter] = currentItem;
@@ -151,5 +170,10 @@ contract Hexs {
             }
         }
         return models;
+    }
+
+    function fetchReviewsLength(uint _modelId) public view returns (uint) {
+        uint length = modelToReviews[_modelId].length;
+        return length;
     }
 }
