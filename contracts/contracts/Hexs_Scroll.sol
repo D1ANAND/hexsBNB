@@ -3,6 +3,8 @@ pragma solidity ^0.8.20;
 
 import "./SDLNFT.sol";
 
+import "./DataFeeds.sol";
+
 //model creation
 //marketplace
 //dao
@@ -38,6 +40,16 @@ contract Hexs {
     mapping (address => mapping (uint => uint)) public userToModelToTokeId;
     mapping (uint => string[]) public modelToReviews; 
 
+    DataFeeds public dataFeeds;
+
+    //data-feeds eth/usd
+    address aggregatorAddress = 0x59F1ec1f10bD7eD9B938431086bC1D9e233ECf41;
+
+    constructor() {
+        dataFeeds = new DataFeeds(aggregatorAddress);
+    }
+
+
     modifier onlyModelOwner(uint _modelId) {
         Model memory model = idToModel[_modelId];
         SDLNFT nft = SDLNFT(model.NFTContract);
@@ -49,6 +61,11 @@ contract Hexs {
         Model memory model = idToModel[_modelId];
         require(msg.sender == model.priviledgedOwner, "");
         _;
+    }
+
+    function getPriceInUsd(uint _tokenId) public view returns (uint) {
+        uint _amount = idToModel[_tokenId].lastSoldPrice;
+        return dataFeeds.calculate(_amount);
     }
 
     function createModel(bool _visibility, string memory _uri) public{

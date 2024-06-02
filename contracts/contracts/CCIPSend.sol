@@ -1,111 +1,5 @@
-// SPDX-License-Identifier: MIT
+//SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
-
-//-----DATAFEEDS-----
-
-import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-
-contract DataFeeds {
-    AggregatorV3Interface internal priceFeed;
-    IERC20 public usdt;
-
-    constructor(address _aggregatorAddress, address _tokenA) {
-        priceFeed = AggregatorV3Interface(_aggregatorAddress);
-        usdt = IERC20(_tokenA);
-    }
-
-   function calculate(uint _amount) public view returns (uint) {
-        uint256 chainlinkDecimals = 10 ** 10;  // chainlink returns in 8 decimals, needs to add 10 more
-        uint256 PriceInUsdt = uint256(getLatestPrice()) * chainlinkDecimals;
-        uint256 usdtAmount = (_amount * PriceInUsdt) / 10**18;
-        return usdtAmount;
-   }
-
-    function getLatestPrice() public view returns (int) {
-        (,int price,,,) = priceFeed.latestRoundData();
-        return price;
-    }
-}
-
-//-----APICALL-----
-
-import {FunctionsClient} from "@chainlink/contracts/src/v0.8/functions/dev/v1_0_0/FunctionsClient.sol";
-import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
-import {FunctionsRequest} from "@chainlink/contracts/src/v0.8/functions/dev/v1_0_0/libraries/FunctionsRequest.sol";
-
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-
-interface DeployerContract {
-    function _apiFallback(string memory _result) external;
-}
-
-contract APICall is FunctionsClient, ConfirmedOwner, ERC721URIStorage {
-    address router;
-    uint64 subscriptionId;
-    bytes32 donID;
-    address deployerContract;
-
-    constructor(address _router, uint64 _subscriptionId, bytes32 _donID, address _deployer) FunctionsClient(_router) ConfirmedOwner(msg.sender) ERC721("NFT", "NFT") {
-        router = _router;
-        subscriptionId = _subscriptionId;
-        donID = _donID;
-        deployerContract = _deployer;
-    }
-
-    using FunctionsRequest for FunctionsRequest.Request;
-
-    bytes32 public s_lastRequestId;
-    bytes public s_lastResponse;
-    bytes public s_lastError;
-    
-    error UnexpectedRequestID(bytes32 requestId);
-
-    uint32 gasLimit = 300000;
-
-    string APIScript =
-        "const prompt = args[0];"
-        "const apiResponse = await Functions.makeHttpRequest({"
-        "url: `https://modelgen.pythonanywhere.com/generate-model-img/${prompt}`"
-        "});"
-        "if (apiResponse.error) {"
-        "throw Error('Request failed');"
-        "}"
-        "const { data } = apiResponse;"
-        "return Functions.encodeString(data[0].url);";
-
-    function APICallFunction(
-        string[] calldata args
-    ) public returns (bytes32 requestId) {
-        FunctionsRequest.Request memory req;
-        req.initializeRequestForInlineJavaScript(APIScript);
-        
-        if (args.length > 0) req.setArgs(args);
-        s_lastRequestId = _sendRequest(
-            req.encodeCBOR(),
-            subscriptionId,
-            gasLimit,
-            donID
-        );
-        return s_lastRequestId;
-    }
-
-    function fulfillRequest(
-        bytes32 requestId,
-        bytes memory response,
-        bytes memory err
-    ) internal override {
-        if (s_lastRequestId != requestId) {
-            revert UnexpectedRequestID(requestId);
-        }
-        s_lastResponse = response;
-        s_lastError = err;
-        string memory result = string(response);
-        DeployerContract deployerContractInstance = DeployerContract(deployerContract);
-        deployerContractInstance._apiFallback(result);
-    }
-}
-
-//-----CCIP-----
 
 import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
 import {OwnerIsCreator} from "@chainlink/contracts-ccip/src/v0.8/shared/access/OwnerIsCreator.sol";
@@ -119,12 +13,10 @@ library CCIPMessage {
         string _nftMetadataUri;
         address _nftTokenAddress;
         uint256 _nftTokenId;
-        // address _ercToken;
-        // uint256 _ercAmount;
     }
 }
 
-contract CCIP is CCIPReceiver, OwnerIsCreator {
+contract CCIPSender is CCIPReceiver, OwnerIsCreator {
     using SafeERC20 for IERC20;
 
     error NotEnoughBalance(uint256 currentBalance, uint256 calculatedFees);
@@ -174,10 +66,16 @@ contract CCIP is CCIPReceiver, OwnerIsCreator {
         external
     {
         // Build the CCIP message
-        Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
-            _receiver,
-            message
-        );
+        Client.EVM2AnyMessage memory evm2AnyMessage = Client.EVM2AnyMessage({
+                receiver: abi.encode(_receiver),
+                data: abi.encode(message),
+                // tokenAmounts: tokenAmounts,
+                tokenAmounts: new Client.EVMTokenAmount[](0),
+                extraArgs: Client._argsToBytes(
+                    Client.EVMExtraArgsV1({gasLimit: 1_500_000})), // Set gas limit to 1,500,000 to pay for fees in native gas
+                feeToken: address(0) // Fees are paid in native gas
+                // feeToken: 0x0Fd9e8d3aF1aaee056EB9e802c3A762a667b1904 // Fees are paid in native gas
+            });
 
          IRouterClient router = IRouterClient(this.getRouter());
 
@@ -206,29 +104,30 @@ contract CCIP is CCIPReceiver, OwnerIsCreator {
         );
     }
 
-    function _buildCCIPMessage(
-        address _receiver,
-        CCIPMessage.MessageStruct memory message  
-    ) internal pure returns (Client.EVM2AnyMessage memory) {
-        // Create an array for token amounts
-        // Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](2);
-        // tokenAmounts[0] = Client.EVMTokenAmount({
-        //     token: message._nftTokenAddress,
-        //     amount: message._nftTokenId
-        // });
+    // function _buildCCIPMessage(
+    //     address _receiver,
+    //     CCIPMessage.MessageStruct memory message  
+    // ) internal pure returns (Client.EVM2AnyMessage memory) {
+    //     // Create an array for token amounts
+    //     // Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](2);
+    //     // tokenAmounts[0] = Client.EVMTokenAmount({
+    //     //     token: message._nftTokenAddress,
+    //     //     amount: message._nftTokenId
+    //     // });
 
-        return
-            Client.EVM2AnyMessage({
-                receiver: abi.encode(_receiver),
-                data: abi.encode(message),
-                // tokenAmounts: tokenAmounts,
-                tokenAmounts: new Client.EVMTokenAmount[](0),
-                extraArgs: Client._argsToBytes(
-                    Client.EVMExtraArgsV1({gasLimit: 1_500_000})), // Set gas limit to 1,500,000 to pay for fees in native gas
-                feeToken: address(0) // Fees are paid in native gas
-            }
-        );
-    }
+    //     return
+    //         Client.EVM2AnyMessage({
+    //             receiver: abi.encode(_receiver),
+    //             data: abi.encode(message),
+    //             // tokenAmounts: tokenAmounts,
+    //             tokenAmounts: new Client.EVMTokenAmount[](0),
+    //             extraArgs: Client._argsToBytes(
+    //                 Client.EVMExtraArgsV1({gasLimit: 1_500_000})), // Set gas limit to 1,500,000 to pay for fees in native gas
+    //             // feeToken: address(0) // Fees are paid in native gas
+    //             feeToken: 0x0Fd9e8d3aF1aaee056EB9e802c3A762a667b1904 // Fees are paid in native gas
+    //         }
+    //     );
+    // }
 
     function _ccipReceive(
         Client.Any2EVMMessage memory any2EvmMessage
@@ -271,7 +170,7 @@ contract CCIP is CCIPReceiver, OwnerIsCreator {
 
     receive() external payable {}
 
-    function withdraw(address _beneficiary) public onlyOwner {
+    function withdraw(address _beneficiary) public {
         uint256 amount = address(this).balance;
         if (amount == 0) revert NothingToWithdraw();
         (bool sent, ) = _beneficiary.call{value: amount}("");
@@ -281,7 +180,7 @@ contract CCIP is CCIPReceiver, OwnerIsCreator {
     function withdrawToken(
         address _beneficiary,
         address _token
-    ) public onlyOwner {
+    ) public {
         uint256 amount = IERC20(_token).balanceOf(address(this));
         if (amount == 0) revert NothingToWithdraw();
         IERC20(_token).safeTransfer(_beneficiary, amount);
