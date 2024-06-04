@@ -47,7 +47,6 @@ contract Hexs {
 
     DataFeeds public dataFeeds;
     CCIPSender public ccipSender;
-    Functions public functions; 
 
     //data-feeds matic/usd
     address aggregatorAddress = 0x001382149eBa3441043c1c66972b4772963f5D43;
@@ -57,11 +56,9 @@ contract Hexs {
     address _linkA = 0x0Fd9e8d3aF1aaee056EB9e802c3A762a667b1904;
     uint64 _destinationChainSelector = 14767482510784806043;
 
-    constructor(address datafeedContract, address ccipContract, address functionContract ) {
+    constructor(address datafeedContract, address ccipContract) {
         dataFeeds = DataFeeds(address(datafeedContract));
         ccipSender = CCIPSender(address(ccipContract));
-        functions = Functions(address(functionContract));
-
     }
 
     mapping (uint => ModelStruct.Model) public idToModel;
